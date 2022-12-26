@@ -1,40 +1,75 @@
 
-use iced::widget::{Button, Column, Container, Text};
-use iced::Sandbox;
 
-pub struct Counter {
-    count: i32,
+use iced::widget::qr_code::{self, QRCode};
+use iced::widget::{column, container, text, text_input};
+use iced::{Alignment, Color, Element, Length, Sandbox, Settings};
+
+#[derive(Default)]
+pub struct QRGenerator{
+    data: String,
+    qr_code: Option<qr_code::State>
+} 
+
+#[derive(Debug, Clone)]
+pub enum Message{
+    DataChanged(String)
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum CounterMessage {
-    Increment,
-    Decrement,
-}
-
-impl Sandbox for Counter {
-    type Message = CounterMessage;
+impl Sandbox for QRGenerator {
+    type Message = Message;
 
     fn new() -> Self {
-        Counter { count: 0 }
-    }
-
-    fn title(&self) -> String {
-        String::from("Counter app")
-    }
-
-    fn update(&mut self, message: Self::Message) {
-        match message {
-            CounterMessage::Increment => self.count += 1,
-            CounterMessage::Decrement => self.count -= 1,
+        QRGenerator { 
+            qr_code: qr_code::State::new("").ok(), 
+            ..Self::default() 
         }
     }
 
-    fn view(&self) -> iced::Element<Self::Message> {
-        let label = Text::new(format!("Count: {}", self.count));
-        let incr = Button::new("Increment").on_press(CounterMessage::Increment);
-        let decr = Button::new("Decrement").on_press(CounterMessage::Decrement);
-        let col = Column::new().push(incr).push(label).push(decr);
-        Container::new(col).center_x().center_y().width(iced::Length::Fill).height(iced::Length::Fill).into()
+    fn title(&self) -> String {
+        String::from("QR generator")
     }
+
+    fn update(&mut self, message: Message){
+        match message {
+            Message::DataChanged(mut data) => {
+                data.truncate(100);
+                self.qr_code = qr_code::State::new(&data).ok();
+                self.data = data;
+            }
+        }
+
+    }
+
+    fn view(&self) -> Element<Message> {
+        
+        let title = text("QR Code Generator")
+        .size(70)
+        .style(Color::from([0.5, 0.5, 0.5]));
+
+        let input = text_input(
+            "Type the data of your QR code here...",
+            &self.data,
+            Message::DataChanged,
+        ).size(30)
+        .padding(15);
+
+        let mut content = column![title, input]
+        .width(Length::Units(700))
+        .spacing(20)
+        .align_items(Alignment::Center);
+
+        if let Some(qr_code) = self.qr_code.as_ref() {
+            content = content.push(QRCode::new(qr_code).cell_size(10));
+        }
+
+        container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .center_x()
+            .center_y()
+            .into()
+    }
+
+
 }
